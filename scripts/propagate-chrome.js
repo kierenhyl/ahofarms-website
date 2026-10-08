@@ -16,6 +16,7 @@ const crypto = require('crypto');
 const { NAV, SOCIAL, CONNECT } = require('./nav-config');
 const { relativize, prefixFor } = require('./render-nav');
 const { listPages } = require('./propagate-nav-pages');
+const { stampGtm } = require('./gtm');
 const SITE = require('../site.json');
 
 const ROOT = path.join(__dirname, '..');
@@ -255,6 +256,9 @@ function processPage(file) {
     else html = html.replace(S.js[0], S.connect[0] + '\n' + CONNECT_HTML + '\n' + S.connect[1] + '\n' + S.js[0]);
   }
 
+  // Run last so the noscript block stays immediately after <body>, before
+  // the skip link, and generated portal pages never inherit marketing tags.
+  html = stampGtm(html, file);
   fs.writeFileSync(full, toEOL(html, eol));
   return isPortal ? 'portal' : 'page';
 }
