@@ -30,10 +30,10 @@ function visit(opts = {}) {
   };
   let code = source;
   if (opts.released) code = code.replace('var RELEASED = false;', 'var RELEASED = true;');
-  if (opts.defaultOn) code = code.replace('var DEFAULT_ON = false;', 'var DEFAULT_ON = true;');
-  vm.runInNewContext(code, { window, document, navigator: opts.navigator || {}, location, localStorage });
+  if (opts.defaultOn === false) code = code.replace('var DEFAULT_ON = true;', 'var DEFAULT_ON = false;');
+  vm.runInNewContext(code, { window, document, navigator: opts.navigator || {}, location, localStorage, URL, URLSearchParams });
   return { window, location, events, store, children, cookies, requests,
-    queue: () => (window.dataLayer || []).map(args => Array.from(args)) };
+    queue: () => (window.dataLayer || []).map(args => args[0] ? Array.from(args) : args) };
 }
 
 const pages = listPages();
@@ -57,31 +57,47 @@ for (const pathname of ['/portal', '/portal/consumer/home', '/patients', '/clini
 }
 for (const entry of [
   { choice: 'off' }, { storageFails: true }, { navigator: { globalPrivacyControl: true } },
-  { navigator: { doNotTrack: '1' } }, { location: { search: '?email=private@example.test' } },
-  { location: { hash: '#patient-detail' } }, { referrer: 'https://example.test/?health=private' },
-  { location: { origin: 'http://localhost:8123' } },
+  { navigator: { doNotTrack: '1' } }, { location: { origin: 'http://localhost:8123' } },
 ]) {
-  assert.equal(visit({ released: true, defaultOn: true, ...entry }).requests.length, 0, JSON.stringify(entry));
+  assert.equal(visit({ released: true, ...entry }).requests.length, 0, JSON.stringify(entry));
 }
-assert.equal(visit({ released: true }).requests.length, 0, 'No invented default consent');
-const active = visit({ released: true, choice: 'on' });
-assert.equal(active.requests[0].src, 'https://www.googletagmanager.com/gtag/js?id=G-3MS8DHXLX7');
-assert.equal(active.requests[0].async, true);
-const queue = active.queue();
-assert.equal(queue[0][2].ad_storage, 'denied');
-assert.equal(queue[0][2].ad_user_data, 'denied');
-assert.equal(queue[0][2].ad_personalization, 'denied');
-assert.equal(queue[2][2].send_page_view, false);
-assert.equal(queue[2][2].allow_google_signals, false);
-assert.equal(queue.filter(args => args[0] === 'event').length, 1);
-assert.equal(queue[3][1], 'page_view');
-assert.equal(queue[3][2].page_location, 'https://ahofarms.com/');
-assert.equal(queue[3][2].page_referrer, '');
-assert.equal(queue[3][2].page_title, 'Aho Farms /');
-assert(!JSON.stringify(queue).includes('form'), 'No form listeners or payload');
+assert.equal(visit({ released: true }).requests.length, 1, 'Default-on is the settled preference');
+assert.equal(visit({ released: true, defaultOn: false }).requests.length, 0, 'Optional regional opt-in can fail closed');
+const scenarios = [
+  { name: 'direct', referrer: '' },
+  { name: 'internal', referrer: 'https://ahofarms.com/?email=private@example.test#private' },
+  { name: 'Google', referrer: 'https://www.google.com/search?q=private-health-detail' },
+  { name: 'UTM', location: { search: '?utm_source=newsletter&utm_medium=email&utm_campaign=private@example.test' } },
+  { name: 'fragment', location: { hash: '#private-health-detail' } },
+  { name: 'unknown-referral', referrer: 'https://private.example.test/patient/secret?email=private@example.test' },
+];
+for (const scenario of scenarios) {
+  const result = visit({ released: true, location: { pathname: '/about', ...scenario.location }, referrer: scenario.referrer });
+  assert.equal(result.requests.length, 1, scenario.name + ': no discarded visit');
+  assert.equal(result.requests[0].src, 'https://www.googletagmanager.com/gtm.js?id=GTM-WJN7H2PZ');
+  assert.equal(result.requests[0].async, true);
+  const queue = result.queue();
+  assert.equal(queue[0][0], 'consent');
+  assert.equal(queue[0][2].ad_storage, 'denied');
+  assert.equal(queue[0][2].ad_user_data, 'denied');
+  assert.equal(queue[0][2].ad_personalization, 'denied');
+  assert(queue.find(item => item['gtm.blocklist'])['gtm.blocklist'].includes('html'));
+  const data = queue.find(item => item.aho_page_location);
+  assert.equal(data.aho_page_location, 'https://ahofarms.com/about');
+  assert.equal(data.aho_page_title, 'Aho Farms /about');
+  assert.equal(queue.filter(item => item.event === 'aho_public_page_view').length, 1);
+  assert(queue.indexOf(data) < queue.findIndex(item => item.event === 'gtm.js'), 'Sanitised fields precede tag initialisation');
+  assert(!queue.some(item => item[0] === 'config' || item[0] === 'event'), 'No direct GA4 configuration or event calls');
+  assert(!JSON.stringify(queue).includes('private'), 'No raw personal URL or campaign data');
+  if (scenario.name === 'Google') assert.equal(data.aho_page_referrer, 'https://www.google.com/');
+  if (scenario.name === 'internal') assert.equal(data.aho_page_referrer, 'https://ahofarms.com/');
+  if (scenario.name === 'UTM') { assert.equal(data.aho_campaign_source, 'newsletter'); assert.equal(data.aho_campaign_medium, 'email'); }
+}
+const active = visit({ released: true });
 active.events.storage({ key: KEY, newValue: 'off' });
 assert.equal(active.window['ga-disable-G-3MS8DHXLX7'], true);
 assert.equal(active.queue().at(-1)[2].analytics_storage, 'denied');
+assert(active.queue().some(item => item.aho_analytics_allowed === false));
 assert(active.location.reloaded);
 assert(active.cookies.length > 0);
 assert(active.cookies.every(value => !value.startsWith('session=')));
@@ -90,7 +106,19 @@ assert(!privacy.children.some(child => child.textContent === 'Allow optional ana
 privacy.children.find(child => child.textContent === 'Turn off optional analytics').click();
 assert.equal(privacy.store.get(KEY), 'off');
 assert(privacy.location.reloaded);
-const policy = require('../vercel.json').headers.flatMap(rule => rule.headers).filter(h => h.key === 'Content-Security-Policy');
-assert.equal(policy.length, 1, 'No expanded CSP in this staged release');
-assert(!policy[0].value.includes('googletagmanager.com'));
-console.log(`ANALYTICS CHECK PASS: ${PUBLIC_ANALYTICS_PAGES.size} public / ${pages.length - PUBLIC_ANALYTICS_PAGES.size} excluded pages; release gate, consent, privacy signals, storage, withdrawal, payload and CSP checked.`);
+const config = require('../vercel.json');
+const cspRules = config.headers.filter(rule => rule.headers.some(h => h.key === 'Content-Security-Policy'));
+assert.equal(cspRules.length, 2);
+const policy = rule => rule.headers.find(h => h.key === 'Content-Security-Policy').value;
+assert(!policy(cspRules[0]).includes('googletagmanager.com'), 'Portal CSP stays unchanged');
+const csp = policy(cspRules[1]);
+for (const host of ['https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://www.google.com']) assert(csp.includes(host));
+assert(!/hs-scripts|hubspot|doubleclick|googlesyndication|unsafe-eval/.test(csp));
+const route = new RegExp('^' + cspRules[1].source + '$');
+assert(route.test('/'));
+for (const file of pages) {
+  assert.equal(route.test('/' + file), PUBLIC_ANALYTICS_PAGES.has(file), file + ' CSP');
+  assert.equal(route.test('/' + file.replace(/\.html$/, '')), PUBLIC_ANALYTICS_PAGES.has(file), file + ' clean CSP');
+}
+for (const url of ['/portal', '/portal/consumer/home', '/patients', '/api/contact/send', '/about/extra']) assert(!route.test(url));
+console.log(`ANALYTICS CHECK PASS: ${PUBLIC_ANALYTICS_PAGES.size} public / ${pages.length - PUBLIC_ANALYTICS_PAGES.size} excluded; GTM gate, default-on, normal referrals/UTMs, sanitisation, withdrawal and GA-only CSP checked.`);

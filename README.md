@@ -34,7 +34,8 @@ Legacy launch redirects are version controlled in the same file.
 See `docs/analytics-readiness.md` before enabling analytics. Run
 `node scripts/propagate-analytics.js` after editing `assets/aho-analytics.js`,
 then `node scripts/check-analytics.js`. The committed release gate keeps all
-optional tracking off; it is not an approved default-on launch.
+optional tracking off until the published GTM and GA4 checks are complete.
+Default-on is already the agreed preference.
 
 ## Portals (sign-in, protected routes)
 
