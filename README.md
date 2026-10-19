@@ -29,6 +29,15 @@ node scripts/audit-site.js
 Vercel serves clean, extensionless URLs through `cleanUrls` in `vercel.json`.
 Legacy launch redirects are version controlled in the same file.
 
+## Temporary search exclusion
+
+`scripts/indexing.js` records four temporarily non-indexable pages: Products,
+Consumer Portal, Sun-grown and Kaitiakitanga. Their generated HTML contains
+`noindex, follow`; sitemap generation omits them. Routes, navigation and
+robots.txt crawl access remain available. This is an indexing request, not
+access control or a guarantee of immediate removal from search results.
+Run `node scripts/check-indexing.js` after the normal regeneration sequence.
+
 ## Analytics (staged, disabled)
 
 See `docs/analytics-readiness.md` before enabling analytics. Run

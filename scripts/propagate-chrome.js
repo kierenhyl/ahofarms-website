@@ -17,6 +17,7 @@ const { NAV, SOCIAL, CONNECT } = require('./nav-config');
 const { relativize, prefixFor } = require('./render-nav');
 const { listPages } = require('./propagate-nav-pages');
 const { stampAnalytics } = require('./analytics');
+const { TEMPORARY_NOINDEX_PAGES, stampTemporaryNoindex } = require('./indexing');
 const { cleanPathForFile } = require('./url-utils');
 const SITE = require('../site.json');
 
@@ -65,6 +66,7 @@ function stampHtmlTag(html, file) {
   });
 }
 function stampNoindex(html, file) {
+  if (TEMPORARY_NOINDEX_PAGES.has(file)) return stampTemporaryNoindex(html, file);
   html = html.replace(/\s*<meta name="robots" content="noindex[^"]*">/g, '');
   if (!NOINDEX_PAGES.has(file) && !PROTECTED_PORTAL_PAGE.test(file) && !HIDDEN_PORTAL_PAGE.test(file)) return html;
   return html.replace(/<meta charset="[^"]*"\s*\/?>/i, m => `${m}\n  <meta name="robots" content="noindex, nofollow">`);
