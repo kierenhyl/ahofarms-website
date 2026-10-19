@@ -29,6 +29,13 @@ node scripts/audit-site.js
 Vercel serves clean, extensionless URLs through `cleanUrls` in `vercel.json`.
 Legacy launch redirects are version controlled in the same file.
 
+## Analytics (staged, disabled)
+
+See `docs/analytics-readiness.md` before enabling analytics. Run
+`node scripts/propagate-analytics.js` after editing `assets/aho-analytics.js`,
+then `node scripts/check-analytics.js`. The committed release gate keeps all
+optional tracking off; it is not an approved default-on launch.
+
 ## Portals (sign-in, protected routes)
 
 The Portals gateway lives under `/portal/`: a public Consumer Portal
