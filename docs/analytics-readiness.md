@@ -68,9 +68,10 @@ publish before the website merge. See [Google's import instructions](https://sup
    status link. Current preview is blocked by “Authorization required to
    deploy.” No bypass or permission change was attempted. Validate effective
    public and portal CSP headers. The production hostname guard intentionally
-   prevents collection from previews; use an explicitly reviewed local
-   production-origin test fixture or the authorised final production smoke
-   check, not an invented preview-host exception.
+   prevents collection from previews. Pre-merge real-tag verification requires
+   an explicitly reviewed production-origin test fixture, not an invented
+   preview-host exception. After the authorised merge/deployment, repeat a
+   small production smoke check; it does not replace pre-merge verification.
 4. After import, verify in Tag Assistant/GA4 DebugView with approved test
    traffic: one page_view per allowed page load, no duplicate automatic page
    view, no clickEmail/formSubmits/form_start/form_submit/HubSpot/Ads requests.
