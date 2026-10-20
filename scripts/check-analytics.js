@@ -22,7 +22,7 @@ function visit(opts = {}) {
     head: { appendChild(script) { requests.push(script); } },
     createElement: element,
     getElementById: () => location.pathname === '/privacy' ? element() : null };
-  Object.defineProperty(document, 'cookie', { get: () => '_ga=old; _ga_TEST=old; session=keep', set: value => cookies.push(value) });
+  Object.defineProperty(document, 'cookie', { get: () => '_ga=old; _ga_TEST=old; hubspotutk=old; __hstc=old; __hssc=old; __hssrc=old; __hs_do_not_track=yes; session=keep', set: value => cookies.push(value) });
   const localStorage = {
     getItem: key => { if (opts.storageFails) throw Error('blocked'); return store.get(key) || null; },
     setItem: (key, value) => { if (opts.storageFails) throw Error('blocked'); store.set(key, value); },
@@ -44,7 +44,7 @@ for (const file of pages) {
   const included = PUBLIC_ANALYTICS_PAGES.has(file);
   assert.equal((html.match(/src="[^"\n]*aho-analytics\.js\?v=/g) || []).length, included ? 1 : 0, file);
   assert.equal((html.match(/>Analytics settings<\/a>/g) || []).length, included ? 1 : 0, `${file} settings access`);
-  assert.equal(stampAnalytics(html, file), html, `${file} idempotence`);
+  assert(stampAnalytics(html, file) === html, `${file} idempotence`);
   assert(!/googletagmanager\.com\/(gtm\.js|ns\.html)|<script[^>]+src=["'][^"']*(?:gtag\/js|hs-scripts|hubspot)/i.test(html), `${file} unconditional tracker`);
   const pathname = '/' + file.replace(/\.html$/, '').replace(/^index$/, '');
   // Exercise both release states independently of the committed setting.
@@ -86,7 +86,8 @@ for (const scenario of scenarios) {
   assert.equal(queue[0][2].ad_storage, 'denied');
   assert.equal(queue[0][2].ad_user_data, 'denied');
   assert.equal(queue[0][2].ad_personalization, 'denied');
-  assert(queue.find(item => item['gtm.blocklist'])['gtm.blocklist'].includes('html'));
+  assert(!queue.some(item => item['gtm.blocklist']), 'Reviewed HubSpot tag is not blocked');
+  assert.equal(result.window._hsq.find(item => item[0] === 'setPath')[1], '/about');
   const data = queue.find(item => item.aho_page_location);
   assert.equal(data.aho_page_location, 'https://ahofarms.com/about');
   assert.equal(data.aho_page_title, 'Aho Farms /about');
@@ -125,6 +126,15 @@ assert(active.queue().some(item => item.aho_analytics_allowed === false));
 assert(active.location.reloaded);
 assert(active.cookies.length > 0);
 assert(active.cookies.every(value => !value.startsWith('session=')));
+assert(active.cookies.some(value => value.startsWith('hubspotutk=')));
+assert(!active.cookies.some(value => value.startsWith('__hs_do_not_track=')), 'Withdrawal preserves HubSpot opt-out');
+assert.equal(active.window._hsq.at(-1)[0], 'doNotTrack');
+assert.equal(active.window._hsp.at(-1)[0], 'revokeCookieConsent');
+const brokenConsent = visit({ released: true });
+brokenConsent.window._hsp.push = () => { throw Error('provider unavailable'); };
+brokenConsent.events.storage({ key: KEY, newValue: 'off' });
+assert.equal(brokenConsent.window._hsq.at(-1)[0], 'doNotTrack', 'Consent API failure cannot prevent DNT');
+assert(brokenConsent.location.reloaded);
 const privacy = visit({ released: false, location: { pathname: '/privacy' } });
 assert(!privacy.children.some(child => child.textContent === 'Allow optional analytics'), 'No opt-in while unreleased');
 privacy.children.find(child => child.textContent === 'Turn off optional analytics').click();
@@ -143,6 +153,8 @@ assert.equal(optedOutPrivacy.queue().length, 0);
 optedOutPrivacy.children.find(child => child.textContent === 'Allow optional analytics').click();
 assert.equal(optedOutPrivacy.store.get(KEY), 'on');
 assert(optedOutPrivacy.location.reloaded);
+const allowedAgain = visit({ released: true, choice: 'on' });
+assert.equal(allowedAgain.window._hsq.find(item => item[0] === 'doNotTrack')[1].track, true);
 const config = require('../vercel.json');
 const cspRules = config.headers.filter(rule => rule.headers.some(h => h.key === 'Content-Security-Policy'));
 assert.equal(cspRules.length, 2);
@@ -150,7 +162,8 @@ const policy = rule => rule.headers.find(h => h.key === 'Content-Security-Policy
 assert(!policy(cspRules[0]).includes('googletagmanager.com'), 'Portal CSP stays unchanged');
 const csp = policy(cspRules[1]);
 for (const host of ['https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://www.google.com']) assert(csp.includes(host));
-assert(!/hs-scripts|hubspot|doubleclick|googlesyndication|unsafe-eval/.test(csp));
+for (const host of ['https://js-ap1.hs-scripts.com', 'https://js-ap1.hs-analytics.net', 'https://js-ap1.hs-banner.com', 'https://track-ap1.hubspot.com']) assert(csp.includes(host));
+assert(!/hscollectedforms|doubleclick|googlesyndication|unsafe-eval/.test(csp));
 const route = new RegExp('^' + cspRules[1].source + '$');
 assert(route.test('/'));
 for (const file of pages) {
@@ -158,4 +171,5 @@ for (const file of pages) {
   assert.equal(route.test('/' + file.replace(/\.html$/, '')), PUBLIC_ANALYTICS_PAGES.has(file), file + ' clean CSP');
 }
 for (const url of ['/portal', '/portal/consumer/home', '/patients', '/api/contact/send', '/about/extra']) assert(!route.test(url));
-console.log(`ANALYTICS CHECK PASS: ${PUBLIC_ANALYTICS_PAGES.size} public / ${pages.length - PUBLIC_ANALYTICS_PAGES.size} excluded; GTM gate, default-on, normal referrals/UTMs, sanitisation, withdrawal and GA-only CSP checked.`);
+console.log(`ANALYTICS CHECK PASS: ${PUBLIC_ANALYTICS_PAGES.size} public / ${pages.length - PUBLIC_ANALYTICS_PAGES.size} excluded; GTM gate, default-on, referrals/UTMs, sanitisation, GA/HubSpot withdrawal and scoped CSP checked.`);
+module.exports = { visit };

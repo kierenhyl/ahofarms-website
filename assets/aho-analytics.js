@@ -29,7 +29,7 @@
   function clearAnalyticsCookies() {
     document.cookie.split(';').forEach(function (item) {
       var name = item.trim().split('=')[0];
-      if (!/^(_ga(?:_|$)|_gid$|_gat(?:_|$))/.test(name)) return;
+      if (!/^(_ga(?:_|$)|_gid$|_gat(?:_|$)|hubspotutk$|__hstc$|__hssc$|__hssrc$)/.test(name)) return;
       var suffix = '=; Max-Age=0; Path=/; SameSite=Lax';
       document.cookie = name + suffix;
       var parts = location.hostname.split('.');
@@ -86,9 +86,12 @@
       ad_user_data: 'denied', ad_personalization: 'denied'
     });
     window.gtag('set', 'ads_data_redaction', true);
-    window.dataLayer.push({
-      'gtm.blocklist': ['html', 'customScripts', 'nonGoogleScripts', 'nonGooglePixels', 'nonGoogleIframes']
-    });
+    // The reviewed container includes the existing HubSpot Custom HTML tag.
+    // CSP limits its external scripts; the same preference gate controls GTM.
+    window._hsq = window._hsq || [];
+    window._hsp = window._hsp || [];
+    if (choice === 'on') window._hsq.push(['doNotTrack', { track: true }]);
+    window._hsq.push(['setPath', path]);
     // These fields exist before the Google configuration tag initialises.
     window.dataLayer.push(pageData());
     window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
@@ -101,14 +104,18 @@
   function stop() {
     enabled = false;
     window['ga-disable-' + ID] = true;
-    if (loaded) window.dataLayer.push({ aho_analytics_allowed: false });
-    if (loaded && window.gtag) window.gtag('consent', 'update', { analytics_storage: 'denied' });
+    try {
+      if (loaded) window.dataLayer.push({ aho_analytics_allowed: false });
+      if (loaded && window.gtag) window.gtag('consent', 'update', { analytics_storage: 'denied' });
+    } catch (_) {}
+    try { if (loaded && window._hsp) window._hsp.push(['revokeCookieConsent']); } catch (_) {}
+    try { if (loaded && window._hsq) window._hsq.push(['doNotTrack']); } catch (_) {}
     clearAnalyticsCookies();
   }
 
   function save(value) {
     try { localStorage.setItem(KEY, value); }
-    catch (_) { stop(); status.textContent = 'Analytics remain off. Your browser could not save this preference.'; return; }
+    catch (_) { stop(); if (status) status.textContent = 'Analytics remain off. Your browser could not save this preference.'; return; }
     choice = value;
     if (value === 'off') stop();
     // Reload removes an already loaded third-party script after withdrawal.
@@ -121,7 +128,7 @@
     status = document.createElement('p');
     status.setAttribute('role', 'status');
     status.textContent = !RELEASED ? 'Optional analytics are currently off on this website.' :
-      enabled ? 'Optional analytics are enabled. Query strings and fragments are not included in page addresses sent to analytics.' : 'Optional analytics are off.';
+      enabled ? 'Optional Google Analytics and HubSpot visitor tracking are enabled. HubSpot may also apply its account cookie choices.' : 'Optional analytics are off.';
     if (choice === 'off') status.textContent += ' Your opt-out is saved in this browser.';
     if (privacySignal) status.textContent += ' Your browser privacy signal is respected.';
     settings.appendChild(status);
@@ -140,6 +147,15 @@
   window.addEventListener('storage', function (event) {
     if (event.key === KEY && event.newValue !== 'on') { stop(); location.reload(); }
   });
+  window.ahoTrackFormSuccess = function (id) {
+    if (!enabled || !loaded) return;
+    var forms = { contact_form: ['/contact', 'Contact enquiry'],
+      partner_form: ['/export-partners', 'Partnership enquiry'] };
+    var form = forms[id];
+    if (!form || form[0] !== path) return;
+    window.dataLayer.push(pageData());
+    window.dataLayer.push({ event: 'aho_form_success', form_id: id, form_name: form[1] });
+  };
   if (!enabled) clearAnalyticsCookies();
   start();
 })();

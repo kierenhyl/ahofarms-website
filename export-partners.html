@@ -493,7 +493,7 @@
 <link rel="stylesheet" href="assets/aho-chrome.css?v=04532ab8">
 <!-- AHO:CHROME:CSS:END -->
 <!-- AHO:ANALYTICS:START -->
-<script src="assets/aho-analytics.js?v=a1b8cf27" defer></script>
+<script src="assets/aho-analytics.js?v=325e534b" defer></script>
 <!-- AHO:ANALYTICS:END -->
 </head>
 <body>
@@ -838,10 +838,12 @@
       var btn = form.querySelector('button[type="submit"]');
       form.addEventListener('submit', function (e) {
         e.preventDefault();
+        if (btn.disabled) return;
         if (!form.checkValidity()) { form.reportValidity(); return; }
         var label = btn.textContent;
         btn.disabled = true; btn.textContent = 'Sending\u2026';
         window.ahoEnquiry(form, 'export-partner').then(function () {
+          try { if (window.ahoTrackFormSuccess) window.ahoTrackFormSuccess('partner_form'); } catch (_) {}
           form.reset();
           status.textContent = 'Thank you. Your partner enquiry has been sent to the Aho Farms export team.';
           status.hidden = false;

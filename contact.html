@@ -331,7 +331,7 @@
 <link rel="stylesheet" href="assets/aho-chrome.css?v=04532ab8">
 <!-- AHO:CHROME:CSS:END -->
 <!-- AHO:ANALYTICS:START -->
-<script src="assets/aho-analytics.js?v=a1b8cf27" defer></script>
+<script src="assets/aho-analytics.js?v=325e534b" defer></script>
 <!-- AHO:ANALYTICS:END -->
 </head>
 <body>
@@ -522,6 +522,7 @@
       }
       form.addEventListener('submit', function (e) {
         e.preventDefault();
+        if (btn.disabled) return;
         clearErrors(); say('');
         var data = {}; new FormData(form).forEach(function (v, k) { data[k] = v; });
         var errors = {};
@@ -535,9 +536,12 @@
         if (keys.length) { keys.forEach(function (k) { fieldError(k, errors[k]); }); var first = form.querySelector('[aria-invalid]'); if (first) first.focus(); return; }
         btn.disabled = true; var label = btn.textContent; btn.textContent = 'Sending…';
         fetch('/api/contact/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(data) })
-          .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+          .then(function (r) { return r.json().catch(function () { return { ok: false }; }).then(function (body) { if (!r.ok) body.ok = false; return body; }); })
           .then(function (r) {
-            if (r.ok) { form.innerHTML = ''; say(r.message || 'Thank you for your message. A member of the Aho Farms team will be in touch within 2 business days.'); form.appendChild(msg); return; }
+            if (r.ok && r.sent === true) {
+              try { if (window.ahoTrackFormSuccess) window.ahoTrackFormSuccess('contact_form'); } catch (_) {}
+              form.innerHTML = ''; say(r.message || 'Thank you for your message. A member of the Aho Farms team will be in touch within 2 business days.'); form.appendChild(msg); return;
+            }
             if (r.fields) Object.keys(r.fields).forEach(function (k) { fieldError(k, r.fields[k]); });
             say(r.error || 'Something went wrong. Please try again, or email us directly.', true);
           })

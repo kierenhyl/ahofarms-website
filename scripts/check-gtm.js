@@ -40,8 +40,18 @@ assert.equal(params(page).measurementIdOverride.value, '{{Google Analytics G-3MS
 assert.equal(page.tagFiringOption, 'ONCE_PER_EVENT');
 assert.equal(page.paused, true, 'Explicitly disable earlier manual tag, including an already-imported copy');
 assert.deepEqual(page.firingTriggerId, ['19']);
-assert.deepEqual(cv.tag.filter(t => !t.paused).map(t => t.tagId).sort(), ['3', '6']);
-for (const id of ['8', '9']) assert.equal(cv.tag.find(t => t.tagId === id).paused, true);
+assert.deepEqual(cv.tag.filter(t => !t.paused).map(t => t.tagId).sort(), ['3', '6', '8', '9']);
+const formTag = cv.tag.find(t => t.tagId === '8');
+const hubspotTag = cv.tag.find(t => t.tagId === '9');
+assert.deepEqual(formTag.firingTriggerId, ['7']);
+assert.deepEqual(hubspotTag.firingTriggerId, ['18']);
+assert.equal(hubspotTag.type, 'html');
+assert(params(hubspotTag).html.value.includes('//js-ap1.hs-scripts.com/443276122.js'));
+const formEvents = table(formTag, 'eventSettingsTable');
+assert.deepEqual(Object.keys(formEvents).sort(), ['form_id', 'form_name', 'page_location', 'page_referrer', 'page_title']);
+assert.equal(formEvents.form_id, '{{DLV - Aho form_id}}');
+assert.equal(formEvents.form_name, '{{DLV - Aho form_name}}');
+for (const key of ['page_location', 'page_referrer', 'page_title']) assert.equal(formEvents[key], settings[key]);
 assert.equal(events.contact_method, 'email');
 assert.deepEqual(Object.keys(events).sort(), ['contact_method', 'page_location', 'page_referrer', 'page_title']);
 assert.equal(params(cv.tag.find(t => t.tagId === '6')).eventName.value, 'clickEmail');
@@ -54,6 +64,8 @@ for (const key of dlvKeys) {
   assert.equal(params(v).dataLayerVersion.value, '2');
 }
 const init = cv.trigger.find(t => t.triggerId === '18');
+const formTrigger = cv.trigger.find(t => t.triggerId === '7');
+assert.deepEqual(formTrigger.filter.slice(-3), init.filter, 'Form success keeps production/public/preference guards');
 const click = cv.trigger.find(t => t.triggerId === '5');
 assert.equal(click.type, 'LINK_CLICK');
 assert.deepEqual(email.firingTriggerId, ['5']);
@@ -81,6 +93,13 @@ for (const file of PUBLIC_ANALYTICS_PAGES) {
 for (const href of ['mailto:private@example.test', 'mailto:admin@ahofarms.com?body=private', 'tel:+64211234567', 'https://example.test']) {
   assert(!click.filter.every(c => matches(c, { ...values, 'Page Path': '/contact', 'Click URL': href })), href);
 }
+for (const [route, id, name] of [['/contact', 'contact_form', 'Contact enquiry'], ['/export-partners', 'partner_form', 'Partnership enquiry']]) {
+  const vars = { ...values, 'Page Path': route, _event: 'aho_form_success', 'DLV - Aho form_id': id, 'DLV - Aho form_name': name };
+  assert([...formTrigger.customEventFilter, ...formTrigger.filter].every(c => matches(c, vars)));
+  for (const override of [{ _event: 'form_submit' }, { 'DLV - Aho form_name': 'private form values' }, { 'Page Path': '/portal/consumers' }, { 'DLV - aho_analytics_allowed': false }]) {
+    assert(![...formTrigger.customEventFilter, ...formTrigger.filter].every(c => matches(c, { ...vars, ...override })));
+  }
+}
 for (const overrides of [{ 'Page Path': '/portal/consumers' }, { 'DLV - aho_analytics_allowed': false }, { 'Page Hostname': 'localhost' }]) {
   assert(!click.filter.every(c => matches(c, { ...values, 'Page Path': '/contact', 'Click URL': 'mailto:admin@ahofarms.com', ...overrides })));
 }
@@ -99,6 +118,9 @@ if (process.argv[2]) {
     if (kind === 'trigger' && entity.triggerId === '5') {
       const expected = { ...entity, filter: click.filter }; delete expected.fingerprint;
       assert.deepEqual(click, expected, 'Email trigger scoped change only');
+    } else if (kind === 'trigger' && entity.triggerId === '7') {
+      const expected = { ...entity, filter: formTrigger.filter }; delete expected.fingerprint;
+      assert.deepEqual(formTrigger, expected, 'Form success trigger scoped change only');
     } else assert.deepEqual(cv[kind].find(e => e.name === entity.name), entity, entity.name + ' preserved');
   }
   for (const entity of old.tag) {
@@ -106,7 +128,8 @@ if (process.argv[2]) {
     delete actual.fingerprint; delete expected.fingerprint;
     if (entity.tagId === '3') { expected.firingTriggerId = ['18']; expected.parameter = actual.parameter; }
     else if (entity.tagId === '6') { expected.paused = false; expected.parameter = actual.parameter; }
-    else expected.paused = true;
+    else if (entity.tagId === '8') { expected.paused = false; expected.parameter = actual.parameter; }
+    else if (entity.tagId === '9') { expected.paused = false; expected.firingTriggerId = ['18']; }
     assert.deepEqual(actual, expected, entity.name + ' scoped change only');
   }
   assert.equal(cv.tag.length - old.tag.length, 1);
@@ -118,10 +141,12 @@ if (process.argv[3]) {
   for (const kind of ['tag', 'trigger', 'variable']) for (const entity of prior[kind]) {
     const actual = cv[kind].find(e => e.name === entity.name);
     assert(actual, entity.name + ': retained for Merge compatibility');
-    if (kind === 'tag' && ['3', '6', '20'].includes(entity.tagId)) continue;
-    if (kind === 'trigger' && entity.triggerId === '5') continue;
+    if (kind === 'tag' && ['8', '9'].includes(entity.tagId)) continue;
+    if (kind === 'trigger' && entity.triggerId === '7') continue;
     assert.deepEqual(actual, entity, entity.name + ': unchanged from earlier import');
   }
-  assert.equal(cv.variable.length - prior.variable.length, 4);
+  assert.equal(cv.variable.length - prior.variable.length, 0);
+  assert.equal(cv.tag.length, prior.tag.length);
+  assert.equal(cv.trigger.length, prior.trigger.length);
 }
-console.log('GTM CHECK PASS: automatic PV, guarded email intent, manual tag paused, original/earlier import compatibility. No live GTM/GA executed.');
+console.log('GTM CHECK PASS: automatic PV, guarded email/form success and HubSpot, manual tag paused; incremental live-v7 compatibility. No live GTM/GA executed.');

@@ -42,11 +42,17 @@ Run `node scripts/check-indexing.js` after the normal regeneration sequence.
 
 See `docs/analytics-readiness.md` for the import JSON and release checks. Run
 `node scripts/propagate-analytics.js` after editing `assets/aho-analytics.js`,
-then `node scripts/check-analytics.js` and `node scripts/check-gtm.js`.
+then `node scripts/check-analytics.js`, `node scripts/check-gtm.js` and
+`node scripts/check-enquiry-tracking.mjs`.
 This branch enables default-on public-page analytics with browser opt-out.
 Publish its replacement GTM import before merging; leave Enhanced Measurement
 on (Site Search off). The standard Google tag sends automatic pageviews and a
-guarded email-click event. Verify real receipt/CSP after merge. The earlier
+guarded email-click event. Contact/Export success events require acceptance by
+the mail provider; failures retain entered fields. HubSpot visitor tracking uses
+the existing account on the same public pages. Production mail routing, HubSpot
+account settings and any CRM form integration still need owner verification.
+Local tests mock mail transport and do not prove inbox or CRM receipt. Verify
+real receipt/CSP after merge. The earlier
 manual page-view import is superseded and its manual tag must remain paused.
 
 ## Portals (sign-in, protected routes)
