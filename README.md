@@ -50,7 +50,7 @@ on (Site Search off). The standard Google tag sends automatic pageviews and a
 guarded email-click event. Contact/Export success events require acceptance by
 the mail provider; failures retain entered fields. HubSpot visitor tracking uses
 the existing account on the same public pages. Production mail routing, HubSpot
-account settings and any CRM form integration still need owner verification.
+visitor-tracking account selection still need owner verification.
 Local tests mock mail transport and do not prove inbox or CRM receipt. Verify
 real receipt/CSP after merge. The earlier
 manual page-view import is superseded and its manual tag must remain paused.

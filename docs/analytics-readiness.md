@@ -83,14 +83,16 @@ is inferred and no worldwide legal-compliance claim is made.
    non-secret `MAIL_FROM`, `CONTACT_TO` and `ENQUIRY_TO` routing values. Do not
    share the API key. Source fallbacks are `Aho Farms Portals <portals@ahofarms.co.nz>`
    and `admin@ahofarms.com`; actual production overrides and Resend sender-domain
-   verification are unknown. Vercel metadata and environment reads were denied
+   verification are unknown. Only `RESEND_API_KEY` is required: the three
+   routing/sender overrides are optional if their fallbacks are correct and
+   Resend authorises the fallback sender. A missing override is not a failure. Vercel metadata and environment reads were denied
    (403, team scope), so production configuration was not established.
-2. Sign in to existing HubSpot account `443276122` for read-only inspection of
-   tracking/privacy settings and any existing Contact/Export form integration.
-   The browser currently reaches Login. No existing form IDs or authorised CRM
-   API route were available; this PR does not invent one. If CRM intake is part
-   of handover, its integration remains unresolved, not silently completed by
-   visitor tracking. No new credentials, permissions or accounts were created.
+2. In existing HubSpot account `443276122`, confirm **Settings → Tracking &
+   Analytics → Tracking Code** is for the Aho production site and provides the
+   AP1 loader for account `443276122`. The browser currently reaches Login;
+   this is unverified, not a demonstrated account failure. No CRM Forms API
+   integration is required by this handover. No automatic sign-in, new
+   credentials or permissions are requested.
 3. Owner imports/publishes the incremental JSON; client reviews/merges PR #3.
    The agreed sequence is merge then live verification. Vercel preview requires
    owner authorisation; no access bypass is attempted or required here.
@@ -100,8 +102,8 @@ is inferred and no worldwide legal-compliance claim is made.
    reporting. Check account destinations, user-provided-data and advertising
    settings rather than assuming JSON controls them.
 5. Before any real enquiry test, confirm exact recipients and obtain approval
-   for the synthetic fields/message and resulting email/possible CRM record.
-   Verify both Contact and Export inbox receipt and any intended CRM records.
+   for the synthetic fields/message and resulting email.
+   Verify both Contact and Export inbox receipt and fixed GA4 success events.
    No real test is authorised or performed by the local mock checks.
 
 These dependencies prevent an honest claim that everything is operational or
