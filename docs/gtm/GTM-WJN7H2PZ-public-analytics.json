@@ -1,6 +1,6 @@
 {
   "exportFormatVersion": 2,
-  "exportTime": "2026-10-20 00:26:46",
+  "exportTime": "2026-10-20 00:41:57",
   "containerVersion": {
     "path": "accounts/6337875715/containers/242787201/versions/0",
     "accountId": "6337875715",
@@ -65,7 +65,7 @@
                   {
                     "type": "TEMPLATE",
                     "key": "parameterValue",
-                    "value": "false"
+                    "value": "true"
                   }
                 ]
               },
@@ -173,6 +173,66 @@
                     "value": "{{DLV - aho_campaign_medium}}"
                   }
                 ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "campaign_name"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV - aho_campaign_name}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "campaign_id"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV - aho_campaign_id}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "campaign_content"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV - aho_campaign_content}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "campaign_term"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV - aho_campaign_term}}"
+                  }
+                ]
               }
             ]
           }
@@ -201,6 +261,72 @@
             "value": "false"
           },
           {
+            "type": "LIST",
+            "key": "eventSettingsTable",
+            "list": [
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "contact_method"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "email"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "page_location"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV - aho_page_location}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "page_referrer"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV - aho_page_referrer}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "page_title"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{DLV - aho_page_title}}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "type": "TEMPLATE",
             "key": "eventName",
             "value": "clickEmail"
@@ -221,7 +347,7 @@
         "consentSettings": {
           "consentStatus": "NOT_SET"
         },
-        "paused": true
+        "paused": false
       },
       {
         "accountId": "6337875715",
@@ -438,7 +564,7 @@
         "consentSettings": {
           "consentStatus": "NOT_SET"
         },
-        "paused": false
+        "paused": true
       }
     ],
     "trigger": [
@@ -450,7 +576,7 @@
         "type": "LINK_CLICK",
         "filter": [
           {
-            "type": "CONTAINS",
+            "type": "EQUALS",
             "parameter": [
               {
                 "type": "TEMPLATE",
@@ -460,7 +586,52 @@
               {
                 "type": "TEMPLATE",
                 "key": "arg1",
-                "value": "mailto:"
+                "value": "mailto:admin@ahofarms.com"
+              }
+            ]
+          },
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{DLV - aho_analytics_allowed}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "true"
+              }
+            ]
+          },
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Page Hostname}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "ahofarms.com"
+              }
+            ]
+          },
+          {
+            "type": "MATCH_REGEX",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Page Path}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "^/((?:(?:index|about|contact|cultivation|disclaimer|export-partners|news|origins|privacy|products|quality|social-impact|team|terms|tohu|whats-new)|news/(?:innovation-extraction|kaitiakitanga-land-wellness|sustainable-sun-grown))(?:\\.html)?|)$"
               }
             ]
           }
@@ -479,8 +650,7 @@
         },
         "uniqueTriggerId": {
           "type": "TEMPLATE"
-        },
-        "fingerprint": "1773305449248"
+        }
       },
       {
         "accountId": "6337875715",
@@ -840,6 +1010,86 @@
             "type": "TEMPLATE",
             "key": "name",
             "value": "aho_campaign_medium"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6337875715",
+        "containerId": "242787201",
+        "variableId": "21",
+        "name": "DLV - aho_campaign_name",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "aho_campaign_name"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6337875715",
+        "containerId": "242787201",
+        "variableId": "22",
+        "name": "DLV - aho_campaign_id",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "aho_campaign_id"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6337875715",
+        "containerId": "242787201",
+        "variableId": "23",
+        "name": "DLV - aho_campaign_content",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "aho_campaign_content"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6337875715",
+        "containerId": "242787201",
+        "variableId": "24",
+        "name": "DLV - aho_campaign_term",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "aho_campaign_term"
           }
         ],
         "formatValue": {}

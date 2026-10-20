@@ -1,5 +1,5 @@
 /* Public-page GTM installation. Publish the reviewed container before merge.
-   No direct GA loader, form events or noscript tracking fallback. */
+   Standard automatic GA4 page views; no direct GA loader or noscript tracker. */
 (function () {
   'use strict';
   // Release ordering and account checks: docs/analytics-readiness.md.
@@ -45,15 +45,11 @@
     try {
       var ref = new URL(document.referrer);
       if (ref.protocol === 'https:' || ref.protocol === 'http:') {
-        // Keep reviewed internal paths and known acquisition origins only.
-        // An arbitrary referrer hostname/path can itself contain personal data.
+        // Keep reviewed internal paths and external origins only.
+        // Strip external paths, credentials, queries and fragments.
         var refPath = ref.pathname.replace(/\.html$/, '').replace(/^\/index$/, '/');
         if (ref.origin === 'https://ahofarms.com') referrer = ref.origin + (pages.indexOf(refPath) !== -1 ? refPath : '/');
-        else if (['www.google.com', 'www.google.co.nz', 'www.google.com.au', 'www.bing.com',
-          'www.linkedin.com', 'linkedin.com', 'www.facebook.com', 'l.facebook.com',
-          'www.instagram.com', 'instagram.com', 'duckduckgo.com'].indexOf(ref.hostname) !== -1) {
-          referrer = 'https://' + ref.hostname + '/';
-        }
+        else referrer = ref.origin + '/';
       }
     } catch (_) {}
     var data = {
@@ -62,17 +58,20 @@
       aho_page_referrer: referrer,
       aho_page_title: 'Aho Farms ' + path,
       // Empty defaults also prevent stale campaign values on future events.
-      aho_campaign_source: '', aho_campaign_medium: ''
+      aho_campaign_source: '', aho_campaign_medium: '', aho_campaign_name: '',
+      aho_campaign_id: '', aho_campaign_content: '', aho_campaign_term: ''
     };
-    // Campaign fields are values from a finite vocabulary, not arbitrary URL
-    // strings. Unknown campaign names/IDs and click identifiers are not sent.
+    // Keep ordinary campaign labels rather than a fixed source/medium list.
+    // Reject obvious email/phone values, control characters and oversized data.
+    // Campaign URLs must still contain campaign labels, not personal/health data.
     var params = new URLSearchParams(location.search);
-    var sources = ['google', 'bing', 'newsletter', 'linkedin', 'facebook', 'instagram', 'hubspot'];
-    var media = ['organic', 'cpc', 'email', 'referral', 'social', 'paid_social'];
-    var source = (params.get('utm_source') || '').toLowerCase();
-    var medium = (params.get('utm_medium') || '').toLowerCase();
-    if (sources.indexOf(source) !== -1) data.aho_campaign_source = source;
-    if (media.indexOf(medium) !== -1) data.aho_campaign_medium = medium;
+    var campaignKeys = { source: 'source', medium: 'medium', name: 'campaign',
+      id: 'id', content: 'content', term: 'term' };
+    Object.keys(campaignKeys).forEach(function (key) {
+      var value = (params.get('utm_' + campaignKeys[key]) || '').trim();
+      if (value.length <= 100 && !/[@\x00-\x1f\x7f]/.test(value) &&
+          !/\d[\d\s().+-]{6,}\d/.test(value)) data['aho_campaign_' + key] = value;
+    });
     return data;
   }
 
@@ -93,7 +92,6 @@
     // These fields exist before the Google configuration tag initialises.
     window.dataLayer.push(pageData());
     window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-    window.dataLayer.push({ event: 'aho_public_page_view' });
     var script = document.createElement('script');
     script.async = true;
     script.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-WJN7H2PZ';

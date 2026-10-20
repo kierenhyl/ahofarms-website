@@ -72,8 +72,9 @@ const scenarios = [
   { name: 'internal', referrer: 'https://ahofarms.com/?email=private@example.test#private' },
   { name: 'Google', referrer: 'https://www.google.com/search?q=private-health-detail' },
   { name: 'UTM', location: { search: '?utm_source=newsletter&utm_medium=email&utm_campaign=private@example.test' } },
+  { name: 'campaign', location: { search: '?utm_source=partner-network&utm_medium=referral&utm_campaign=spring2026&utm_id=launch1&utm_content=heroA&utm_term=botanical+extracts' } },
   { name: 'fragment', location: { hash: '#private-health-detail' } },
-  { name: 'unknown-referral', referrer: 'https://private.example.test/patient/secret?email=private@example.test' },
+  { name: 'unknown-referral', referrer: 'https://new-partner.example.test/patient/secret?email=private@example.test' },
 ];
 for (const scenario of scenarios) {
   const result = visit({ released: true, location: { pathname: '/about', ...scenario.location }, referrer: scenario.referrer });
@@ -89,13 +90,32 @@ for (const scenario of scenarios) {
   const data = queue.find(item => item.aho_page_location);
   assert.equal(data.aho_page_location, 'https://ahofarms.com/about');
   assert.equal(data.aho_page_title, 'Aho Farms /about');
-  assert.equal(queue.filter(item => item.event === 'aho_public_page_view').length, 1);
+  assert.equal(queue.filter(item => item.event === 'aho_public_page_view').length, 0, 'Automatic pageviews only');
   assert(queue.indexOf(data) < queue.findIndex(item => item.event === 'gtm.js'), 'Sanitised fields precede tag initialisation');
   assert(!queue.some(item => item[0] === 'config' || item[0] === 'event'), 'No direct GA4 configuration or event calls');
   assert(!JSON.stringify(queue).includes('private'), 'No raw personal URL or campaign data');
   if (scenario.name === 'Google') assert.equal(data.aho_page_referrer, 'https://www.google.com/');
+  if (scenario.name === 'unknown-referral') assert.equal(data.aho_page_referrer, 'https://new-partner.example.test/');
   if (scenario.name === 'internal') assert.equal(data.aho_page_referrer, 'https://ahofarms.com/');
   if (scenario.name === 'UTM') { assert.equal(data.aho_campaign_source, 'newsletter'); assert.equal(data.aho_campaign_medium, 'email'); }
+  if (scenario.name === 'campaign') {
+    assert.equal(data.aho_campaign_source, 'partner-network');
+    assert.equal(data.aho_campaign_medium, 'referral');
+    assert.equal(data.aho_campaign_name, 'spring2026');
+    assert.equal(data.aho_campaign_id, 'launch1');
+    assert.equal(data.aho_campaign_content, 'heroA');
+    assert.equal(data.aho_campaign_term, 'botanical extracts');
+  }
+}
+for (const value of ['person@example.test', '+64 21 123 4567', 'x'.repeat(101), 'bad\nvalue']) {
+  const result = visit({ released: true, location: { search: '?utm_source=' + encodeURIComponent(value) } });
+  assert.equal(result.queue().find(item => item.aho_page_location).aho_campaign_source, '', 'Reject obvious unsafe campaign value');
+}
+for (const [file, id, action] of [['contact.html', 'contactForm', '/contact'],
+  ['export-partners.html', 'partnerForm', '/export-partners'], ['news.html', 'newsletterForm', '/news']]) {
+  const html = fs.readFileSync(path.join(root, file), 'utf8');
+  const tag = html.match(new RegExp('<form[^>]*id="' + id + '"[^>]*>'))[0];
+  assert(tag.includes('action="' + action + '"'), id + ': clean form_destination metadata, no current query');
 }
 const active = visit({ released: true });
 active.events.storage({ key: KEY, newValue: 'off' });
