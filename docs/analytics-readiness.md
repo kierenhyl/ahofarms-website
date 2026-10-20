@@ -1,137 +1,136 @@
-# Guarded GTM installation: activation held
+# Public-page analytics release
 
-Default-on basic analytics and a privacy-page update are already approved.
-`DEFAULT_ON = true` records that preference. `RELEASED = false` is a technical
-hold because published GTM version 6 still has unrestricted Google/HubSpot
-initialisation and unsanitised automatic measurement. It is not a renewed
-request to choose default-on versus opt-in.
+PR #3 contains the activation change: `RELEASED = true`, default-on analytics,
+accurate privacy wording and browser opt-out. **Publish the reviewed GTM import
+before merging the website PR.** The JSON has not been imported or published
+by this work. Account checks and real delivery below remain unverified; keep
+the PR draft until they pass. Merging against the old container is unsafe.
 
-This PR replaces [PR #2](https://github.com/Longoreotekooro/ahofarms-website/pull/2)
-as the review candidate and includes its intended container ID and public
-scope. Both branch from main; do not merge both. PR #2 remains open and
-unchanged. The earlier direct-GA4 implementation in PR #3 is superseded.
+This is the review candidate replacing
+[PR #2](https://github.com/Longoreotekooro/ahofarms-website/pull/2), which remains
+open and unchanged. Do not merge both. The four approved temporary noindex
+pages from commit `dca41db` are preserved.
 
-## Current account evidence, read-only on 19 October 2026
+## Import file and expected changes
 
-GTM `GTM-WJN7H2PZ`, account `6337875715`, container `242787201`: version **6**
-is Live, published **9 October 2026**. Workspace 7 showed zero pending changes.
-Published Google Tag uses `G-3MS8DHXLX7`; Google and HubSpot initialise on all
-pages. The email event is `clickEmail`. Form event `formSubmits` uses only
-fixed form IDs/names on `aho_form_success`; it is not wired by this PR.
+Use [GTM-WJN7H2PZ-public-analytics.json](gtm/GTM-WJN7H2PZ-public-analytics.json).
+It is a full Version 2 WEB export for account `6337875715`, container
+`242787201`, public ID `GTM-WJN7H2PZ`. Source: Kieren's supplied
+`GTM-WJN7H2PZ_workspace7.json`, exported **20 October 2026 00:24:24 UTC**.
+This is a workspace export (`containerVersionId: 0`), not a saved version 6
+export. Its entities match the architecture inspected in published version 6
+(live since 9 October), with the current form-event settings and fingerprints.
+No second export is needed unless the workspace/container changes meanwhile.
 
-GA4 is authenticated, but opens a different property. Its property selector
-is absent and the app reports errors; Aho's property could not be positively
-selected. Aho's GA4 settings remain **unverified**, not denied or presumed
-correct. Kieren can open Aho in Chrome or provide its GA4 Admin/property link.
-No GA4/GTM account settings, consent settings or permissions were changed.
-
-## Exact proposed GTM changes, NOT imported or published
-
-The smallest page-view-only release requires these changes to a copy of the
-current published container. Preserve the existing tags and legacy event names.
-Do not use this document as evidence that the changes have been applied.
-
-| Entity | Proposed change |
+| Entity | Change |
 |---|---|
-| `Hubspot Tag` (tag 9, Custom HTML) | Pause. Remove all-page HubSpot collection from this release. Do not add HubSpot CSP origins. |
-| `GA4 Event - Click To Email` (tag 6) | Pause for the page-view-only release. Keep `clickEmail` for later intentional review. |
-| `GA4 Event - Form Submit` (tag 8) | Pause. Keep `formSubmits`, existing trigger and fixed form parameters for the separate form workstream. |
-| `Google Tag` (tag 3) | Replace unrestricted Initialization - All Pages with an Initialization trigger restricted to the public path scope below, hostname `ahofarms.com`, and `aho_analytics_allowed` equals `true`. Set `send_page_view=false`, `allow_google_signals=false`, `allow_ad_personalization_signals=false`. Override `page_location`, `page_title`, `page_referrer`, `campaign_source`, `campaign_medium` from the matching DLVs below. |
-| New `GA4 Event - Public Page View` | Native GA4 Event template, measurement ID `G-3MS8DHXLX7`, event `page_view`, once per event. Set `page_location`, `page_title`, `page_referrer` from the matching DLVs. Trigger only on `aho_public_page_view`, with the same allowed/hostname/public-path restrictions. |
-| Six new DLVs (Version 2) | `aho_analytics_allowed`, `aho_page_location`, `aho_page_title`, `aho_page_referrer`, `aho_campaign_source`, `aho_campaign_medium`. Use these exact keys; no DOM/form variables. |
+| Existing Google Tag (3) | Restricted Initialization trigger; `send_page_view=false`, Google signals and ad personalisation disabled; sanitised page/referrer/title/campaign fields supplied. Measurement ID remains `G-3MS8DHXLX7`. |
+| Existing email tag (6) | Paused; original `clickEmail` event and trigger retained. |
+| Existing form tag (8) | Paused; original `formSubmits`, success trigger and fixed form parameters retained for separate form work. |
+| Existing Hubspot Tag (9) | Paused; loader retained without permitting HubSpot in CSP. |
+| New GA4 Event - Public Page View (20) | One native `page_view` per `aho_public_page_view`, with sanitised page/referrer/title and recognised source/medium values. |
+| New triggers (18, 19) | Public Analytics Initialization and Public Page View; both require allowed=true, hostname `ahofarms.com` and complete public-path match. |
+| Six new DLVs (12–17) | Version 2 keys: `aho_analytics_allowed`, `aho_page_location`, `aho_page_referrer`, `aho_page_title`, `aho_campaign_source`, `aho_campaign_medium`. |
 
-Public Page Path condition (anchor the complete value):
+Expected import: **1 added tag, 4 modified tags (including 3 paused), 2 added
+triggers, 6 added variables, 0 deleted entities**. Existing two triggers, three
+variables, seven built-ins, names, IDs and unrelated settings are preserved.
+No Custom HTML or custom template is added. This must not be a zero-change
+import. Duplicate renamed Google tags would leave the old unrestricted tag
+active, so use the conflict setting below.
 
-```text
-^/((?:(?:index|about|contact|cultivation|disclaimer|export-partners|news|origins|privacy|products|quality|social-impact|team|terms|tohu|whats-new)|news/(?:innovation-extraction|kaitiakitanga-land-wellness|sustainable-sun-grown))(?:\.html)?|)$
-```
+Kieren: **Admin → Import Container → select this JSON → New workspace → Merge
+→ Overwrite conflicting tags, triggers and variables**. This is Merge with
+conflict overwrite, not the top-level Overwrite option. Continue → View
+Detailed Changes; confirm the list above. Stop if it differs. Test, then
+publish before the website merge. See [Google's import instructions](https://support.google.com/tagmanager/answer/6106997?hl=en).
 
-The loader queues Consent Mode before GTM: analytics granted only after its
-release/preference/privacy-signal gates; all advertising purposes denied.
-It queues the six sanitised fields before `gtm.js`, then exactly one
-`aho_public_page_view` event. The Google configuration initialises with those
-fields before the explicit page-view event is processed. A client-side GTM
-blocklist also blocks Custom HTML/non-Google script/pixel/iframe types as
-added protection, not as a substitute for pausing the HubSpot tag.
+## Required account and delivery checks before merge
 
-This is a native-template configuration specification, not an import file.
-The source export does not contain a Google configuration-settings-table
-example, so no opaque JSON parameter schema has been invented. Prepare/export
-that native configuration in an authorised test workspace before importing
-or publishing anything. None has been created by this work.
+1. Open the Aho GA4 web stream for **G-3MS8DHXLX7**: Admin → Data collection
+   and modification → Data streams → matching web stream. Turn **Enhanced
+   measurement off** for this page-view-only setup, including history page
+   changes and form interactions. Confirm user-provided data collection is
+   off, and the Google tag has only the intended GA4 destination, with no
+   Ads/remarketing destination. These settings are outside container JSON.
+   The authenticated GA4 app previously opened another property and did not
+   expose a usable selector; Aho's settings have not been verified. Kieren
+   can open the correct property in Chrome or supply its Admin link for a
+   read-only check. No new access or permissions are requested.
+2. In GTM, inspect the imported Google tag's Configuration settings: false
+   values must be boolean-effective, not truthy strings. Confirm the new
+   native event receives the same sanitised values and Google initialises
+   first. JSON table structure is based on an existing native Google-tag
+   export seed; validator success is not proof of import or runtime success.
+   `send_page_view=false` suppresses load pageviews; it does **not** disable
+   enhanced-measurement history pageviews. [Google's pageview guide](https://developers.google.com/analytics/devguides/collection/ga4/views).
+3. The Vercel team owner must authorise the PR preview through its GitHub
+   status link. Current preview is blocked by “Authorization required to
+   deploy.” No bypass or permission change was attempted. Validate effective
+   public and portal CSP headers. The production hostname guard intentionally
+   prevents collection from previews; use an explicitly reviewed local
+   production-origin test fixture or the authorised final production smoke
+   check, not an invented preview-host exception.
+4. After import, verify in Tag Assistant/GA4 DebugView with approved test
+   traffic: one page_view per allowed page load, no duplicate automatic page
+   view, no clickEmail/formSubmits/form_start/form_submit/HubSpot/Ads requests.
+   Check direct, internal, search and recognised newsletter/email campaign
+   visits; raw query strings, fragments and synthetic private values must
+   not appear in Google requests. Check a portal route sends nothing. Check
+   Privacy opt-out stops collection, clears accessible GA cookies and remains
+   off after reload and in another open tab; GPC/DNT/storage-blocked visits
+   send nothing. JavaScript-off visits have no noscript tracker. Do not submit
+   live enquiry or portal forms to test.
 
-## What the website code does
+## Website behaviour and limits
 
-- Installs one local bootstrap on 19 explicit public pages; 27 others remain
-  excluded, including portals, prescribers, pharmacies and the patient article.
-- When released, default-on applies unless this browser opted out, storage is
-  blocked, GPC or DNT is set. Production host is pinned. Ordinary internal,
-  search, campaign and fragment-bearing visits remain eligible.
-- Sends canonical allowlisted page paths and fixed titles, never URL query or
-  fragment data. Internal referrers retain only reviewed paths. Known search/
-  social referrers retain origin only. Unknown referrer hosts become empty,
-  while their visits are still counted. Known campaign source/medium values
-  are retained through a finite vocabulary; arbitrary campaigns, IDs, click
-  identifiers and personal/form/health data are not forwarded.
-- Stores opt-out locally, sets the GA disable flag and allowed=false, clears
-  first-party GA cookies at `/`, denies analytics consent and reloads. Other
-  tabs respond to withdrawal. No noscript iframe/pixel can bypass the choice.
-- Does not load `gtag/js` or configure/send direct GA4 events. There is no
-  HubSpot form embed, email-click handler or form-success emitter in this PR.
+The local loader is present on 19 reviewed public pages; 27 other pages are
+excluded, including portals, prescribers, pharmacies and the patient article.
+It loads GTM only on `https://ahofarms.com`. Browser opt-out, blocked storage,
+GPC and DNT prevent loading. It queues consent (analytics granted, all ad
+purposes denied) and sanitised fields before GTM initialisation, then one
+explicit page-view event. A client blocklist also blocks Custom HTML and
+non-Google script/pixel/iframe types; the HubSpot pause remains required.
 
-## CSP
+Only canonical allowlisted public paths and fixed titles are supplied.
+Internal referrers retain reviewed paths; known search/social referrers retain
+origin only. Unknown referrers become empty while visits still count. Campaign
+source/medium use finite vocabularies, with no arbitrary campaign name/ID,
+click ID, DOM, form or health values. Browser cookie/device/session and network
+information still exists; analytics is not anonymous. Automatic GA collection
+must be disabled/checked as above because a native Google script can otherwise
+read the raw page independently of our six supplied fields.
 
-The additional policy applies only to the same 19 clean/HTML public routes.
-Global/portal policy and middleware are unchanged. Added script origin:
-`https://www.googletagmanager.com`. Added connection origins:
-`https://www.googletagmanager.com`, `https://www.google-analytics.com`,
-`https://region1.google-analytics.com`, `https://www.google.com`.
-The existing HTTPS image directive already permits GA images. There is no
-HubSpot, DoubleClick, Ads, unsafe-eval, Preview-only or noscript frame exception.
-These are proposed baseline GA-only origins based on [Google's CSP guide](https://developers.google.com/tag-platform/security/guides/csp).
-Effective Vercel headers and real Google delivery still require an authorised
-preview; static matcher checks are not proof of actual delivery.
+Opt-out is local to the browser. Withdrawal sets GA's disable flag, allowed=false,
+denies analytics consent, clears accessible `_ga`/`_gid`/`_gat` cookies and
+reloads, including cross-tab withdrawal. There is no direct GA loader or
+noscript iframe. HubSpot forms remain a separate workstream.
 
-## Exact next steps
+Default-on is the approved preference and applies globally. The site has no
+trusted country mechanism; GPC/DNT are privacy signals, not geography. No
+country is invented and no claim of worldwide legal compliance is made.
+Any required regional exception needs a confirmed policy and supported country
+signal before release to the affected market.
 
-1. **Kieren:** open Aho's GA4 property or provide its Admin URL. Then the agent
-   can verify the stream matches the measurement ID, enhanced measurement
-   (especially forms, outbound clicks, search/history), user-provided data,
-   linked destinations, signals/advertising and retention read-only. Disable
-   automatic/extra collection through a separately authorised account change
-   if found; do not silently accept it.
-2. **Aho/privacy adviser:** only determine whether any intended visitor markets
-   require prior consent or another exception to default-on. The preference
-   itself is settled. Do not assume an overseas legal rule applies solely
-   because a visitor might exist there. If a regional exception is required,
-   implement a trusted server-country policy and fail closed for unknown
-   country. Vercel documents `x-vercel-ip-country`, but this site does not yet
-   expose it to the client and local tests do not prove production geo.
-3. **Authorised GTM operator:** review/test the exact changes above in a copy,
-   then separately approve publication. The agent must not import or publish
-   them under this task. Without that publication, enabling this loader would
-   use the current v6 configuration and is not safe to treat as page-view-only.
-4. **Longo/Vercel team owner:** authorise the PR preview through the exact
-   GitHub Vercel status link. No protection bypass or permission change by the
-   agent. A production-only host guard still needs an explicit test fixture or
-   reviewed preview-host configuration to exercise the release path.
-5. **Engineering:** after those checks, run controlled real-tag network tests
-   with approved test data/property, verify one sanitised event and no HubSpot/
-   advertising/form events, effective CSP, exclusions, withdrawal and JS-off.
-   Update privacy activation wording and release the gate in the same review.
+CSP permits GTM script loading and baseline Google Analytics collection on
+only the public routes. No HubSpot, DoubleClick, Ads, unsafe-eval or noscript
+frame exception was added. Overlapping global/public rules need effective
+Vercel-header verification; local regex tests do not establish delivery.
 
-For applicable consent rules, the [ICO guidance](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/cookies-and-similar-technologies/)
-requires a positive choice for non-essential cookies and warns that a privacy
-notice alone is insufficient; that page itself notes a guidance revision is
-under consultation. It does not establish applicability to Aho. No legal
-compliance certification or blanket worldwide opt-in requirement is asserted.
+## Validation performed
 
-## Local validation
+- `gtm_json.py validate ... --against <supplied source>`: full export valid,
+  no errors or warnings.
+- `node scripts/check-gtm.js <supplied source>`: exact preservation and
+  intended additions/modifications, references, native parameter maps,
+  trigger gates and public/HTML path contract.
+- `node scripts/check-analytics.js`: both release states, 19/27 scope,
+  sanitisation, normal referral/campaign visits, saved opt-out, Privacy-button
+  withdrawal/re-enable, cross-tab withdrawal, GPC/DNT/storage and CSP scope.
+- `node scripts/check-indexing.js`: four temporary noindex/follow pages,
+  sitemap exclusions and preserved access/links; other page scope unchanged.
 
-`node scripts/check-analytics.js` checks release/default-on gates, 19/27 scope,
-ordinary referrals/UTMs/fragments, sanitised payloads, no direct GA calls,
-withdrawal and scoped GA-only CSP. Nav/launch/audit and isolated full rebuild
-checks also apply. Local network fixtures replace GTM with a localhost capture
-stub, enforce same-origin-only CSP and send no Google/HubSpot traffic. They
-prove the site's event contract, not the actual published container or GA4
-account's behaviour. No live forms or leads are created.
+These tests use static validation and a stub DOM/queue; they do not execute
+Google/HubSpot or prove GA receipt. Earlier local browser network capture used
+a localhost GTM stub and proves only the site's event contract. No actual GTM
+import, real-tag delivery, GA4 receipt or deployment is claimed.

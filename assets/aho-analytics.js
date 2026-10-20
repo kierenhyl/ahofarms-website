@@ -1,10 +1,9 @@
-/* Guarded GTM installation. See docs/analytics-readiness.md before release.
+/* Public-page GTM installation. Publish the reviewed container before merge.
    No direct GA loader, form events or noscript tracking fallback. */
 (function () {
   'use strict';
-  // Activation held until the published GTM, GA4 account and preview gates
-  // have been checked. Enabling this requires a separately reviewed change.
-  var RELEASED = false;
+  // Release ordering and account checks: docs/analytics-readiness.md.
+  var RELEASED = true;
   var DEFAULT_ON = true;
   var ID = 'G-3MS8DHXLX7';
   var KEY = 'aho-analytics-choice-v1';

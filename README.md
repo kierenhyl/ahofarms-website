@@ -38,13 +38,14 @@ robots.txt crawl access remain available. This is an indexing request, not
 access control or a guarantee of immediate removal from search results.
 Run `node scripts/check-indexing.js` after the normal regeneration sequence.
 
-## Analytics (staged, disabled)
+## Analytics (publish container before merge)
 
-See `docs/analytics-readiness.md` before enabling analytics. Run
+See `docs/analytics-readiness.md` for the import JSON and release checks. Run
 `node scripts/propagate-analytics.js` after editing `assets/aho-analytics.js`,
-then `node scripts/check-analytics.js`. The committed release gate keeps all
-optional tracking off until the published GTM and GA4 checks are complete.
-Default-on is already the agreed preference.
+then `node scripts/check-analytics.js` and `node scripts/check-gtm.js`.
+This branch enables default-on public-page analytics with browser opt-out.
+Publish its reviewed GTM import and complete the GA4/account and effective-CSP
+checks before merging; the old live container is unsuitable for this release.
 
 ## Portals (sign-in, protected routes)
 

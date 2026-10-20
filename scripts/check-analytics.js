@@ -29,7 +29,9 @@ function visit(opts = {}) {
     removeItem: key => store.delete(key),
   };
   let code = source;
-  if (opts.released) code = code.replace('var RELEASED = false;', 'var RELEASED = true;');
+  if (typeof opts.released === 'boolean') {
+    code = code.replace(/var RELEASED = (?:false|true);/, `var RELEASED = ${opts.released};`);
+  }
   if (opts.defaultOn === false) code = code.replace('var DEFAULT_ON = true;', 'var DEFAULT_ON = false;');
   vm.runInNewContext(code, { window, document, navigator: opts.navigator || {}, location, localStorage, URL, URLSearchParams });
   return { window, location, events, store, children, cookies, requests,
@@ -45,12 +47,14 @@ for (const file of pages) {
   assert.equal(stampAnalytics(html, file), html, `${file} idempotence`);
   assert(!/googletagmanager\.com\/(gtm\.js|ns\.html)|<script[^>]+src=["'][^"']*(?:gtag\/js|hs-scripts|hubspot)/i.test(html), `${file} unconditional tracker`);
   const pathname = '/' + file.replace(/\.html$/, '').replace(/^index$/, '');
-  // The exact committed release gate must defeat even a saved opt-in.
-  const off = visit({ choice: 'on', location: { pathname } });
+  // Exercise both release states independently of the committed setting.
+  const off = visit({ released: false, choice: 'on', location: { pathname } });
   assert.equal(off.requests.length, 0, `${file} release gate`);
   assert.equal(off.queue().length, 0, `${file} release queue`);
   const active = visit({ released: true, choice: 'on', location: { pathname } });
   assert.equal(active.requests.length, included ? 1 : 0, `${file} runtime scope`);
+  assert.equal(visit({ released: true, location: { pathname: '/' + file } }).requests.length,
+    included ? 1 : 0, `${file} HTML runtime scope`);
 }
 for (const pathname of ['/portal', '/portal/consumer/home', '/patients', '/clinical', '/api/contact/send', '/unknown', '/about/extra', '/about/']) {
   assert.equal(visit({ released: true, defaultOn: true, location: { pathname } }).requests.length, 0, pathname);
@@ -101,11 +105,24 @@ assert(active.queue().some(item => item.aho_analytics_allowed === false));
 assert(active.location.reloaded);
 assert(active.cookies.length > 0);
 assert(active.cookies.every(value => !value.startsWith('session=')));
-const privacy = visit({ location: { pathname: '/privacy' } });
+const privacy = visit({ released: false, location: { pathname: '/privacy' } });
 assert(!privacy.children.some(child => child.textContent === 'Allow optional analytics'), 'No opt-in while unreleased');
 privacy.children.find(child => child.textContent === 'Turn off optional analytics').click();
 assert.equal(privacy.store.get(KEY), 'off');
 assert(privacy.location.reloaded);
+const enabledPrivacy = visit({ released: true, location: { pathname: '/privacy' } });
+assert.equal(enabledPrivacy.requests.length, 1);
+enabledPrivacy.children.find(child => child.textContent === 'Turn off optional analytics').click();
+assert.equal(enabledPrivacy.store.get(KEY), 'off');
+assert.equal(enabledPrivacy.window['ga-disable-G-3MS8DHXLX7'], true);
+assert.equal(enabledPrivacy.queue().at(-1)[2].analytics_storage, 'denied');
+assert(enabledPrivacy.location.reloaded);
+const optedOutPrivacy = visit({ released: true, choice: 'off', location: { pathname: '/privacy' } });
+assert.equal(optedOutPrivacy.requests.length, 0);
+assert.equal(optedOutPrivacy.queue().length, 0);
+optedOutPrivacy.children.find(child => child.textContent === 'Allow optional analytics').click();
+assert.equal(optedOutPrivacy.store.get(KEY), 'on');
+assert(optedOutPrivacy.location.reloaded);
 const config = require('../vercel.json');
 const cspRules = config.headers.filter(rule => rule.headers.some(h => h.key === 'Content-Security-Policy'));
 assert.equal(cspRules.length, 2);
